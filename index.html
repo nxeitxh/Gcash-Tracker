@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GCash Tracker</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/888/888879.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        /* Remove number arrows */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        /* Prevent zooming on inputs in iOS */
+        input, select, textarea { font-size: 16px !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 relative pb-20">
+
+    <button id="openSettingsButton" class="absolute top-4 right-4 p-3 bg-gray-800 border border-gray-700 rounded-full shadow-lg active:bg-gray-700 z-10" title="Edit Rates">
+        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+    </button>
+
+    <div class="w-full max-w-md sm:max-w-4xl mt-2">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-blue-400 tracking-tight">GCash Tracker</h1>
+        </header>
+
+        <div id="errorDisplay" class="bg-red-900/80 border border-red-700 text-red-100 px-4 py-3 rounded-xl relative mb-4 shadow-lg hidden animate-pulse" role="alert">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-300 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-sm font-medium" id="errorMessage"></span>
+            </div>
+        </div>
+        
+        <div id="successDisplay" class="bg-green-800/80 border border-green-600 text-green-100 px-4 py-3 rounded-xl relative mb-4 shadow-lg hidden" role="alert">
+            <div class="flex items-center">
+                 <svg class="w-5 h-5 text-green-300 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span class="text-sm font-medium" id="successMessage"></span>
+            </div>
+        </div>
+
+        <form id="addTransactionForm" class="mb-6 p-5 bg-gray-800 rounded-2xl shadow-xl border border-gray-700">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="col-span-2">
+                    <label class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Transaction Type</label>
+                    <div class="relative">
+                        <select id="description" class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 appearance-none focus:ring-2 focus:ring-blue-500 text-lg">
+                            <option value="Cash In">Cash In</option>
+                            <option value="Cash Out">Cash Out</option>
+                            <option value="Load">Load</option>
+                            <option value="Bills">Bills</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-white">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Amount</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">₱</span>
+                        <input type="number" inputmode="decimal" id="amount" placeholder="0.00" class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 pl-8 focus:ring-2 focus:ring-blue-500 text-xl font-bold">
+                    </div>
+                </div>
+
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Date</label>
+                    <input type="date" id="transactionDate" class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 h-[54px]">
+                </div>
+
+                <div id="referenceNumberGroup" class="col-span-2 hidden">
+                    <label class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Ref Number</label>
+                    <input type="text" inputmode="numeric" id="referenceNumber" placeholder="Last 4 digits..." class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div id="calculatedChargeContainer" class="col-span-2 bg-gray-900/50 p-3 rounded-xl border border-gray-700/50 flex justify-between items-center">
+                    <span class="text-sm text-gray-400">Fee:</span>
+                    <span id="calculatedCharge" class="text-xl font-bold text-blue-300">0.00</span>
+                </div>
+            </div>
+            <button type="submit" id="addTransactionButton" class="w-full bg-blue-600 active:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform transform active:scale-95 flex justify-center items-center text-lg">
+                Add Transaction
+            </button>
+        </form>
+
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-700">
+                <p class="text-xs text-gray-400 uppercase">Count</p>
+                <p id="totalTransactions" class="text-2xl font-bold text-white mt-1">0</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-700">
+                <p class="text-xs text-gray-400 uppercase">Total Fees</p>
+                <p id="totalChargesPaid" class="text-2xl font-bold text-green-400 mt-1">₱0</p>
+            </div>
+        </div>
+
+        <div class="flex space-x-2 mb-6">
+            <button id="exportExcelButton" class="flex-1 bg-green-700/80 hover:bg-green-700 text-white text-sm font-medium py-3 px-4 rounded-xl transition-colors disabled:opacity-50 border border-green-600">
+                Export Excel
+            </button>
+            <button id="resetAllButton" class="flex-1 bg-red-900/80 hover:bg-red-800 text-white text-sm font-medium py-3 px-4 rounded-xl transition-colors disabled:opacity-50 border border-red-800">
+                Reset Data
+            </button>
+        </div>
+
+        <div class="bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-700 mb-8">
+            <h2 class="text-lg font-semibold p-4 text-indigo-300 border-b border-gray-700 bg-gray-800/50">History</h2>
+            <div id="noTransactionsMessage" class="p-8 text-center text-gray-500 hidden">No transactions yet.</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
+                        <tr>
+                            <th class="px-4 py-3">Date</th>
+                            <th class="px-4 py-3">Type</th>
+                            <th class="px-4 py-3 text-right">Amt</th>
+                            <th class="px-4 py-3 text-right">Fee</th>
+                            <th class="px-2 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody" class="divide-y divide-gray-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 hidden animate-fade-in">
+        <div class="bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col border-t sm:border border-gray-700">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">Edit Rates</h3>
+                <button id="closeSettingsButton" class="p-2 bg-gray-700 rounded-full text-gray-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-4 overflow-y-auto custom-scrollbar flex-1">
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div>
+                        <label class="block text-xs text-gray-400 uppercase mb-1">Load Fee</label>
+                        <input type="number" inputmode="decimal" id="settingLoadFee" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 uppercase mb-1">Bills Fee</label>
+                        <input type="number" inputmode="decimal" id="settingBillsFee" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-blue-300 mb-2">Tiers (Cash In/Out)</h4>
+                    <div class="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-950 text-gray-400 text-xs uppercase">
+                                <tr>
+                                    <th class="px-2 py-2">Max Amt</th>
+                                    <th class="px-2 py-2">Fee</th>
+                                    <th class="px-1 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="settingsTiersBody"></tbody>
+                        </table>
+                        <button id="addTierRow" class="w-full py-3 text-center text-xs text-blue-400 hover:bg-gray-800 font-semibold border-t border-gray-700">+ Add Tier</button>
+                    </div>
+                </div>
+                
+                <div class="mb-2 border-t border-gray-700 pt-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Threshold Logic (> Tiers)</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-gray-400">Threshold</label>
+                            <input type="number" inputmode="decimal" id="settingThreshold" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-400">Base Fee</label>
+                            <input type="number" inputmode="decimal" id="settingBaseFee" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-700 flex justify-between items-center bg-gray-850">
+                <button id="resetDefaultRates" class="text-xs text-red-400 underline">Reset Defaults</button>
+                <button id="saveSettings" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg shadow-lg">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl max-w-xs w-full border border-gray-700">
+            <h3 class="text-lg font-bold text-white mb-2">Delete?</h3>
+            <p class="text-gray-400 text-sm mb-6">This action cannot be undone.</p>
+            <div class="flex space-x-3">
+                <button id="cancelDeleteButton" class="flex-1 py-2 bg-gray-700 text-white rounded-lg">Cancel</button>
+                <button id="confirmDeleteButton" class="flex-1 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="resetAllModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl max-w-xs w-full border border-gray-700">
+            <h3 class="text-lg font-bold text-red-400 mb-2">Wipe All Data?</h3>
+            <p class="text-gray-400 text-sm mb-6">This will remove every transaction saved on this device.</p>
+            <div class="flex space-x-3">
+                <button id="cancelResetAllButton" class="flex-1 py-2 bg-gray-700 text-white rounded-lg">Cancel</button>
+                <button id="confirmResetAllButton" class="flex-1 py-2 bg-red-600 text-white rounded-lg font-bold">Wipe</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- CONSTANTS & STATE ---
+        const DEFAULT_RATES = {
+            load: 5, bills: 0, threshold: 10000, baseFee: 135,
+            tiers: [
+                { min: 1, max: 500, fee: 10 }, { min: 501, max: 1000, fee: 15 },
+                { min: 1001, max: 1500, fee: 20 }, { min: 1501, max: 2000, fee: 25 },
+                { min: 2001, max: 2500, fee: 30 }, { min: 2501, max: 3000, fee: 40 },
+                { min: 3001, max: 4000, fee: 50 }, { min: 4001, max: 5000, fee: 60 },
+                { min: 5001, max: 6000, fee: 75 }, { min: 6001, max: 7000, fee: 90 },
+                { min: 7001, max: 8000, fee: 105 }, { min: 8001, max: 9000, fee: 120 },
+                { min: 9001, max: 10000, fee: 135 }
+            ]
+        };
+        let transactions = [];
+        let currentRates = JSON.parse(JSON.stringify(DEFAULT_RATES));
+        let transactionToDeleteId = null;
+
+        // --- DOM ELEMENTS ---
+        const getEl = (id) => document.getElementById(id);
+        // Alerts
+        const errorDisplay = getEl('errorDisplay'), errorMessage = getEl('errorMessage');
+        const successDisplay = getEl('successDisplay'), successMessage = getEl('successMessage');
+        // Form
+        const addForm = getEl('addTransactionForm'), descSelect = getEl('description');
+        const amtInput = getEl('amount'), dateInput = getEl('transactionDate');
+        const refGroup = getEl('referenceNumberGroup'), refInput = getEl('referenceNumber');
+        const calcChargeDisplay = getEl('calculatedCharge'), calcChargeContainer = getEl('calculatedChargeContainer');
+        const addBtn = getEl('addTransactionButton');
+        // Stats
+        const totalTx = getEl('totalTransactions'), totalPaid = getEl('totalChargesPaid');
+        const tableBody = getEl('transactionsTableBody'), noTxMsg = getEl('noTransactionsMessage');
+        // Buttons
+        const exportBtn = getEl('exportExcelButton'), resetBtn = getEl('resetAllButton');
+        // Settings
+        const openSetBtn = getEl('openSettingsButton'), setModal = getEl('settingsModal');
+        const closeSetBtn = getEl('closeSettingsButton'), saveSetBtn = getEl('saveSettings');
+        const resetRatesBtn = getEl('resetDefaultRates'), addTierBtn = getEl('addTierRow');
+        const setLoad = getEl('settingLoadFee'), setBills = getEl('settingBillsFee');
+        const setThresh = getEl('settingThreshold'), setBase = getEl('settingBaseFee');
+        const setTiersBody = getEl('settingsTiersBody');
+        // Modals
+        const delModal = getEl('deleteModal'), confirmDel = getEl('confirmDeleteButton'), cancelDel = getEl('cancelDeleteButton');
+        const resetModal = getEl('resetAllModal'), confirmReset = getEl('confirmResetAllButton'), cancelReset = getEl('cancelResetAllButton');
+
+        // --- LOGIC ---
+        const loadData = () => {
+            const t = localStorage.getItem('gcashTransactions');
+            if(t) transactions = JSON.parse(t).map(x => ({...x, timestamp: new Date(x.timestamp)}));
+            const r = localStorage.getItem('gcashRates');
+            if(r) currentRates = JSON.parse(r);
+        };
+        const saveData = () => localStorage.setItem('gcashTransactions', JSON.stringify(transactions));
+        const saveRates = () => { localStorage.setItem('gcashRates', JSON.stringify(currentRates)); displayMsg(successDisplay, successMessage, "Rates Saved"); };
+        
+        const displayMsg = (el, msgEl, text) => {
+            msgEl.textContent = text; el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        };
+
+        const fmtDate = (d) => {
+            if(!d) return '';
+            const date = new Date(d);
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        };
+        
+        const getCharge = (amt, type) => {
+            if (amt <= 0) return 0;
+            if (type === "Load") return currentRates.load;
+            if (type === "Bills") return currentRates.bills;
+            let charge = 0, rem = amt;
+            if (currentRates.threshold > 0) {
+                while (rem > currentRates.threshold) { charge += currentRates.baseFee; rem -= currentRates.threshold; }
+            }
+            if (rem > 0) {
+                const tier = currentRates.tiers.find(t => rem >= t.min && rem <= t.max);
+                if (tier) charge += tier.fee;
+                else if (currentRates.tiers.length > 0 && rem > currentRates.tiers[currentRates.tiers.length-1].max) charge += currentRates.tiers[currentRates.tiers.length-1].fee;
+            }
+            return charge;
+        };
+
+        const updateChargeUI = () => {
+            const val = parseFloat(amtInput.value) || 0;
+            calcChargeDisplay.textContent = getCharge(val, descSelect.value).toFixed(2);
+        };
+
+        const render = () => {
+            transactions.sort((a,b) => b.timestamp - a.timestamp);
+            tableBody.innerHTML = '';
+            if(transactions.length === 0) {
+                noTxMsg.classList.remove('hidden'); totalTx.textContent=0; totalPaid.textContent='₱0';
+                exportBtn.disabled=true; resetBtn.disabled=true; return;
+            }
+            noTxMsg.classList.add('hidden'); exportBtn.disabled=false; resetBtn.disabled=false;
+            let total = 0;
+            transactions.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-800 last:border-0 hover:bg-gray-700/50";
+                const dateStr = t.timestamp.toLocaleDateString('en-US', {month:'numeric', day:'numeric'});
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-gray-300 whitespace-nowrap">${dateStr}</td>
+                    <td class="px-4 py-3 text-white font-medium">${t.description}</td>
+                    <td class="px-4 py-3 text-gray-300 text-right">₱${Number(t.amount).toLocaleString()}</td>
+                    <td class="px-4 py-3 text-red-300 font-bold text-right">₱${Number(t.charge).toLocaleString()}</td>
+                    <td class="px-2 py-3 text-right">
+                        <button data-id="${t.id}" class="del-btn text-gray-500 hover:text-red-500 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+                total += Number(t.charge);
+            });
+            totalTx.textContent = transactions.length;
+            totalPaid.textContent = `₱${total.toLocaleString()}`;
+        };
+
+        // --- SETTINGS RENDERING ---
+        const renderTiers = () => {
+            setTiersBody.innerHTML = '';
+            currentRates.tiers.sort((a,b) => a.min - b.min);
+            currentRates.tiers.forEach((t, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-2 py-1"><input type="number" value="${t.max}" class="w-full bg-gray-800 text-white text-xs p-2 rounded t-max"></td>
+                    <td class="px-2 py-1"><input type="number" value="${t.fee}" class="w-full bg-gray-800 text-white text-xs p-2 rounded t-fee"></td>
+                    <td class="px-1 py-1"><button onclick="rmTier(${i})" class="text-red-500 p-1">x</button></td>
+                `;
+                setTiersBody.appendChild(tr);
+            });
+        };
+        window.rmTier = (i) => { currentRates.tiers.splice(i, 1); renderTiers(); };
+
+        // --- LISTENERS ---
+        descSelect.addEventListener('change', () => {
+            const isOut = descSelect.value === "Cash Out";
+            refGroup.classList.toggle('hidden', !isOut);
+            if(!isOut) refInput.value = '';
+            updateChargeUI();
+        });
+        amtInput.addEventListener('input', updateChargeUI);
+        
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amt = parseFloat(amtInput.value), date = dateInput.value, desc = descSelect.value;
+            if (!desc || !date) return displayMsg(errorDisplay, errorMessage, "Missing Date/Type");
+            if (isNaN(amt) || amt < 0 || (desc !== "Load" && amt <= 0)) return displayMsg(errorDisplay, errorMessage, "Invalid Amount");
+            if (desc === "Cash Out" && !refInput.value.trim()) return displayMsg(errorDisplay, errorMessage, "Ref No. Required");
+
+            const now = new Date();
+            const [y, m, d] = date.split('-').map(Number);
+            const ts = new Date(y, m - 1, d, now.getHours(), now.getMinutes());
+            
+            transactions.push({ id: Date.now().toString(), description: desc, amount: amt, charge: getCharge(amt, desc), timestamp: ts, referenceNumber: refInput.value.trim() || null });
+            saveData(); render(); addForm.reset(); 
+            dateInput.value = fmtDate(new Date());
+            descSelect.value = "Cash In"; descSelect.dispatchEvent(new Event('change'));
+            displayMsg(successDisplay, successMessage, "Added!");
+        });
+
+        // Settings
+        openSetBtn.addEventListener('click', () => {
+            setLoad.value = currentRates.load; setBills.value = currentRates.bills;
+            setThresh.value = currentRates.threshold; setBase.value = currentRates.baseFee;
+            renderTiers(); setModal.classList.remove('hidden');
+        });
+        closeSetBtn.addEventListener('click', () => setModal.classList.add('hidden'));
+        addTierBtn.addEventListener('click', () => { currentRates.tiers.push({min:0, max:0, fee:0}); renderTiers(); });
+        saveSetBtn.addEventListener('click', () => {
+            currentRates.load = parseFloat(setLoad.value)||0; currentRates.bills = parseFloat(setBills.value)||0;
+            currentRates.threshold = parseFloat(setThresh.value)||0; currentRates.baseFee = parseFloat(setBase.value)||0;
+            const rows = setTiersBody.querySelectorAll('tr');
+            const newTiers = [];
+            let prevMax = 0;
+            rows.forEach(r => {
+                const max = parseFloat(r.querySelector('.t-max').value)||0;
+                const fee = parseFloat(r.querySelector('.t-fee').value)||0;
+                newTiers.push({ min: prevMax + 1, max, fee });
+                prevMax = max;
+            });
+            currentRates.tiers = newTiers;
+            saveRates(); updateChargeUI(); setModal.classList.add('hidden');
+        });
+        resetRatesBtn.addEventListener('click', () => { if(confirm("Reset rates?")) { currentRates = JSON.parse(JSON.stringify(DEFAULT_RATES)); openSetBtn.click(); }});
+
+        // Modals & Actions
+        exportBtn.addEventListener('click', () => {
+            if(!window.XLSX || transactions.length===0) return;
+            const data = transactions.map(t => ({ "Date": t.timestamp.toLocaleString(), "Type": t.description, "Ref": t.referenceNumber||'', "Amount": t.amount, "Fee": t.charge }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data");
+            XLSX.writeFile(wb, `GCash_Data_${fmtDate(new Date())}.xlsx`);
+        });
+        resetBtn.addEventListener('click', () => transactions.length && resetModal.classList.remove('hidden'));
+        cancelReset.addEventListener('click', () => resetModal.classList.add('hidden'));
+        confirmReset.addEventListener('click', () => { transactions=[]; saveData(); render(); resetModal.classList.add('hidden'); });
+
+        tableBody.addEventListener('click', (e) => { if(e.target.closest('.del-btn')) { transactionToDeleteId=e.target.closest('.del-btn').dataset.id; delModal.classList.remove('hidden'); }});
+        cancelDel.addEventListener('click', () => delModal.classList.add('hidden'));
+        confirmDel.addEventListener('click', () => { transactions=transactions.filter(t=>t.id!==transactionToDeleteId); saveData(); render(); delModal.classList.add('hidden'); });
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => { dateInput.value = fmtDate(new Date()); loadData(); updateChargeUI(); render(); });
+    </script>
+</body>
+</html>
