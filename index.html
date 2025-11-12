@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GCash Tracker</title>
     
+    <link rel="manifest" href="manifest.json">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#111827">
@@ -124,7 +126,8 @@
                         <tr>
                             <th class="px-4 py-3">Date</th>
                             <th class="px-4 py-3">Type</th>
-                            <th class="px-4 py-3">Ref</th> <th class="px-4 py-3 text-right">Amt</th>
+                            <th class="px-4 py-3">Ref</th>
+                            <th class="px-4 py-3 text-right">Amt</th>
                             <th class="px-4 py-3 text-right">Fee</th>
                             <th class="px-2 py-3"></th>
                         </tr>
@@ -214,6 +217,15 @@
     </div>
 
     <script type="module">
+        // --- OFFLINE PWA REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Offline Ready'))
+                    .catch(err => console.log('SW Fail', err));
+            });
+        }
+
         // --- CONSTANTS & STATE ---
         const DEFAULT_RATES = {
             load: 5, bills: 0, threshold: 10000, baseFee: 135,
@@ -233,28 +245,21 @@
 
         // --- DOM ELEMENTS ---
         const getEl = (id) => document.getElementById(id);
-        // Alerts
         const errorDisplay = getEl('errorDisplay'), errorMessage = getEl('errorMessage');
         const successDisplay = getEl('successDisplay'), successMessage = getEl('successMessage');
-        // Form
         const addForm = getEl('addTransactionForm'), descSelect = getEl('description');
         const amtInput = getEl('amount'), dateInput = getEl('transactionDate');
         const refGroup = getEl('referenceNumberGroup'), refInput = getEl('referenceNumber');
-        const calcChargeDisplay = getEl('calculatedCharge'), calcChargeContainer = getEl('calculatedChargeContainer');
-        const addBtn = getEl('addTransactionButton');
-        // Stats
+        const calcChargeDisplay = getEl('calculatedCharge');
         const totalTx = getEl('totalTransactions'), totalPaid = getEl('totalChargesPaid');
         const tableBody = getEl('transactionsTableBody'), noTxMsg = getEl('noTransactionsMessage');
-        // Buttons
         const exportBtn = getEl('exportExcelButton'), resetBtn = getEl('resetAllButton');
-        // Settings
         const openSetBtn = getEl('openSettingsButton'), setModal = getEl('settingsModal');
         const closeSetBtn = getEl('closeSettingsButton'), saveSetBtn = getEl('saveSettings');
         const resetRatesBtn = getEl('resetDefaultRates'), addTierBtn = getEl('addTierRow');
         const setLoad = getEl('settingLoadFee'), setBills = getEl('settingBillsFee');
         const setThresh = getEl('settingThreshold'), setBase = getEl('settingBaseFee');
         const setTiersBody = getEl('settingsTiersBody');
-        // Modals
         const delModal = getEl('deleteModal'), confirmDel = getEl('confirmDeleteButton'), cancelDel = getEl('cancelDeleteButton');
         const resetModal = getEl('resetAllModal'), confirmReset = getEl('confirmResetAllButton'), cancelReset = getEl('cancelResetAllButton');
 
@@ -316,7 +321,8 @@
                 tr.innerHTML = `
                     <td class="px-4 py-3 text-gray-300 whitespace-nowrap">${dateStr}</td>
                     <td class="px-4 py-3 text-white font-medium">${t.description}</td>
-                    <td class="px-4 py-3 text-gray-400 text-xs">${t.referenceNumber || '-'}</td> <td class="px-4 py-3 text-gray-300 text-right">₱${Number(t.amount).toLocaleString()}</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">${t.referenceNumber || '-'}</td>
+                    <td class="px-4 py-3 text-gray-300 text-right">₱${Number(t.amount).toLocaleString()}</td>
                     <td class="px-4 py-3 text-red-300 font-bold text-right">₱${Number(t.charge).toLocaleString()}</td>
                     <td class="px-2 py-3 text-right">
                         <button data-id="${t.id}" class="del-btn text-gray-500 hover:text-red-500 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
@@ -372,7 +378,7 @@
             displayMsg(successDisplay, successMessage, "Added!");
         });
 
-        // Settings
+        // Settings Listeners
         openSetBtn.addEventListener('click', () => {
             setLoad.value = currentRates.load; setBills.value = currentRates.bills;
             setThresh.value = currentRates.threshold; setBase.value = currentRates.baseFee;
@@ -397,7 +403,7 @@
         });
         resetRatesBtn.addEventListener('click', () => { if(confirm("Reset rates?")) { currentRates = JSON.parse(JSON.stringify(DEFAULT_RATES)); openSetBtn.click(); }});
 
-        // Modals & Actions
+        // Export & Reset
         exportBtn.addEventListener('click', () => {
             if(!window.XLSX || transactions.length===0) return;
             const data = transactions.map(t => ({ "Date": t.timestamp.toLocaleString(), "Type": t.description, "Ref": t.referenceNumber||'', "Amount": t.amount, "Fee": t.charge }));
@@ -409,6 +415,7 @@
         cancelReset.addEventListener('click', () => resetModal.classList.add('hidden'));
         confirmReset.addEventListener('click', () => { transactions=[]; saveData(); render(); resetModal.classList.add('hidden'); });
 
+        // Delete
         tableBody.addEventListener('click', (e) => { if(e.target.closest('.del-btn')) { transactionToDeleteId=e.target.closest('.del-btn').dataset.id; delModal.classList.remove('hidden'); }});
         cancelDel.addEventListener('click', () => delModal.classList.add('hidden'));
         confirmDel.addEventListener('click', () => { transactions=transactions.filter(t=>t.id!==transactionToDeleteId); saveData(); render(); delModal.classList.add('hidden'); });
