@@ -124,7 +124,7 @@
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
                         <tr>
-                            <th class="px-4 py-3">Date</th>
+                            <th class="px-4 py-3 w-24">Date</th>
                             <th class="px-4 py-3">Type</th>
                             <th class="px-4 py-3">Ref</th>
                             <th class="px-4 py-3 text-right">Amt</th>
@@ -306,7 +306,9 @@
         };
 
         const render = () => {
+            // SORTING LOGIC: Newest timestamp first
             transactions.sort((a,b) => b.timestamp - a.timestamp);
+            
             tableBody.innerHTML = '';
             if(transactions.length === 0) {
                 noTxMsg.classList.remove('hidden'); totalTx.textContent=0; totalPaid.textContent='₱0';
@@ -317,14 +319,21 @@
             transactions.forEach(t => {
                 const tr = document.createElement('tr');
                 tr.className = "border-b border-gray-800 last:border-0 hover:bg-gray-700/50";
-                const dateStr = t.timestamp.toLocaleDateString('en-US', {month:'numeric', day:'numeric'});
+                
+                // Date & Time Formatting
+                const dateStr = t.timestamp.toLocaleDateString('en-US', {month:'numeric', day:'numeric', year: '2-digit'});
+                const timeStr = t.timestamp.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true});
+
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-gray-300 whitespace-nowrap">${dateStr}</td>
-                    <td class="px-4 py-3 text-white font-medium">${t.description}</td>
-                    <td class="px-4 py-3 text-gray-400 text-xs">${t.referenceNumber || '-'}</td>
-                    <td class="px-4 py-3 text-gray-300 text-right">₱${Number(t.amount).toLocaleString()}</td>
-                    <td class="px-4 py-3 text-red-300 font-bold text-right">₱${Number(t.charge).toLocaleString()}</td>
-                    <td class="px-2 py-3 text-right">
+                    <td class="px-4 py-3 text-gray-300 whitespace-nowrap align-middle">
+                        <div class="font-medium">${dateStr}</div>
+                        <div class="text-[10px] text-gray-500">${timeStr}</div>
+                    </td>
+                    <td class="px-4 py-3 text-white font-medium align-middle">${t.description}</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs align-middle">${t.referenceNumber || '-'}</td>
+                    <td class="px-4 py-3 text-gray-300 text-right align-middle">₱${Number(t.amount).toLocaleString()}</td>
+                    <td class="px-4 py-3 text-red-300 font-bold text-right align-middle">₱${Number(t.charge).toLocaleString()}</td>
+                    <td class="px-2 py-3 text-right align-middle">
                         <button data-id="${t.id}" class="del-btn text-gray-500 hover:text-red-500 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                     </td>
                 `;
@@ -369,6 +378,7 @@
 
             const now = new Date();
             const [y, m, d] = date.split('-').map(Number);
+            // Combine date input with current time for sorting
             const ts = new Date(y, m - 1, d, now.getHours(), now.getMinutes());
             
             transactions.push({ id: Date.now().toString(), description: desc, amount: amt, charge: getCharge(amt, desc), timestamp: ts, referenceNumber: refInput.value.trim() || null });
