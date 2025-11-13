@@ -30,7 +30,7 @@
 <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 relative pb-20">
 
     <button id="openSettingsButton" class="absolute top-4 right-4 p-3 bg-gray-800 border border-gray-700 rounded-full shadow-lg active:bg-gray-700 z-10" title="Edit Rates">
-        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
     </button>
 
     <div class="w-full max-w-md sm:max-w-4xl mt-2">
@@ -82,9 +82,10 @@
                     <input type="date" id="transactionDate" class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 h-[54px]">
                 </div>
 
+                <!-- This group is now used for Ref, Phone, and Notes -->
                 <div id="referenceNumberGroup" class="col-span-2 hidden">
                     <label id="referenceLabel" class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Ref Number</label>
-                    <input type="text" inputmode="numeric" id="referenceNumber" placeholder="Last 4 digits..." class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="referenceNumber" placeholder="Last 4 digits..." class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
                 </div>
                 
                 <div id="calculatedChargeContainer" class="col-span-2 bg-gray-900/50 p-3 rounded-xl border border-gray-700/50 flex justify-between items-center">
@@ -126,7 +127,8 @@
                         <tr>
                             <th class="px-4 py-3 w-24">Date</th>
                             <th class="px-4 py-3">Type</th>
-                            <th class="px-4 py-3">Ref/No.</th>
+                            <!-- Updated table header -->
+                            <th class="px-4 py-3">Ref/Notes</th>
                             <th class="px-4 py-3 text-right">Amt</th>
                             <th class="px-4 py-3 text-right">Fee</th>
                             <th class="px-2 py-3"></th>
@@ -324,13 +326,19 @@
                 const dateStr = t.timestamp.toLocaleDateString('en-US', {month:'numeric', day:'numeric', year: '2-digit'});
                 const timeStr = t.timestamp.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true});
 
+                // Truncate long notes for display in the table
+                let displayRef = t.referenceNumber || '-';
+                if (t.description === 'Bills' && displayRef.length > 20) {
+                    displayRef = displayRef.substring(0, 20) + '...';
+                }
+
                 tr.innerHTML = `
                     <td class="px-4 py-3 text-gray-300 whitespace-nowrap align-middle">
                         <div class="font-medium">${dateStr}</div>
                         <div class="text-[10px] text-gray-500">${timeStr}</div>
                     </td>
                     <td class="px-4 py-3 text-white font-medium align-middle">${t.description}</td>
-                    <td class="px-4 py-3 text-gray-400 text-xs align-middle">${t.referenceNumber || '-'}</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs align-middle" title="${t.referenceNumber || ''}">${displayRef}</td>
                     <td class="px-4 py-3 text-gray-300 text-right align-middle">₱${Number(t.amount).toLocaleString()}</td>
                     <td class="px-4 py-3 text-red-300 font-bold text-right align-middle">₱${Number(t.charge).toLocaleString()}</td>
                     <td class="px-2 py-3 text-right align-middle">
@@ -363,7 +371,11 @@
         // --- LISTENERS ---
         descSelect.addEventListener('change', () => {
             const type = descSelect.value;
-            // Logic for Reference/Phone Number Input visibility
+            
+            // Reset input properties before applying new ones
+            refInput.value = '';
+            
+            // Logic for Reference/Phone/Notes Input visibility
             if (type === "Cash Out") {
                 refGroup.classList.remove('hidden');
                 refLabel.textContent = "Ref Number";
@@ -371,17 +383,21 @@
                 refInput.setAttribute('inputmode', 'numeric');
             } else if (type === "Cash In") {
                 refGroup.classList.remove('hidden');
-                refLabel.textContent = "Ref Number"; // User option for Cash In
+                refLabel.textContent = "Ref Number";
                 refInput.placeholder = "Last 4 digits (Optional)...";
                 refInput.setAttribute('inputmode', 'numeric');
             } else if (type === "Load") {
                 refGroup.classList.remove('hidden');
-                refLabel.textContent = "Phone Number"; // Specific Label for Load
+                refLabel.textContent = "Phone Number";
                 refInput.placeholder = "09xxxxxxxxx";
-                refInput.setAttribute('inputmode', 'tel'); // Phone keyboard
+                refInput.setAttribute('inputmode', 'tel');
+            } else if (type === "Bills") {
+                refGroup.classList.remove('hidden');
+                refLabel.textContent = "Notes";
+                refInput.placeholder = "Biller, Acct No. (Optional)...";
+                refInput.setAttribute('inputmode', 'text');
             } else {
                 refGroup.classList.add('hidden');
-                refInput.value = '';
             }
             updateChargeUI();
         });
@@ -395,7 +411,6 @@
             if (isNaN(amt) || amt < 0 || (desc !== "Load" && amt <= 0)) return displayMsg(errorDisplay, errorMessage, "Invalid Amount");
             
             // Validation: Only enforce Ref Number for Cash Out (Strict)
-            // Cash In and Load refs/phones are optional to allow faster entry if needed
             if (desc === "Cash Out" && !refInput.value.trim()) return displayMsg(errorDisplay, errorMessage, "Ref No. Required");
 
             const now = new Date();
@@ -446,7 +461,14 @@
         // Export & Reset
         exportBtn.addEventListener('click', () => {
             if(!window.XLSX || transactions.length===0) return;
-            const data = transactions.map(t => ({ "Date": t.timestamp.toLocaleString(), "Type": t.description, "Ref/Phone": t.referenceNumber||'', "Amount": t.amount, "Fee": t.charge }));
+            // Updated Excel header
+            const data = transactions.map(t => ({ 
+                "Date": t.timestamp.toLocaleString(), 
+                "Type": t.description, 
+                "Ref/Phone/Notes": t.referenceNumber||'', 
+                "Amount": t.amount, 
+                "Fee": t.charge 
+            }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data");
             XLSX.writeFile(wb, `GCash_Data_${fmtDate(new Date())}.xlsx`);
