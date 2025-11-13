@@ -83,7 +83,7 @@
                 </div>
 
                 <div id="referenceNumberGroup" class="col-span-2 hidden">
-                    <label class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Ref Number</label>
+                    <label id="referenceLabel" class="block text-xs uppercase tracking-wider font-semibold text-gray-400 mb-1">Ref Number</label>
                     <input type="text" inputmode="numeric" id="referenceNumber" placeholder="Last 4 digits..." class="w-full bg-gray-700 text-white border border-gray-600 rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
                 </div>
                 
@@ -126,7 +126,7 @@
                         <tr>
                             <th class="px-4 py-3 w-24">Date</th>
                             <th class="px-4 py-3">Type</th>
-                            <th class="px-4 py-3">Ref</th>
+                            <th class="px-4 py-3">Ref/No.</th>
                             <th class="px-4 py-3 text-right">Amt</th>
                             <th class="px-4 py-3 text-right">Fee</th>
                             <th class="px-2 py-3"></th>
@@ -249,7 +249,7 @@
         const successDisplay = getEl('successDisplay'), successMessage = getEl('successMessage');
         const addForm = getEl('addTransactionForm'), descSelect = getEl('description');
         const amtInput = getEl('amount'), dateInput = getEl('transactionDate');
-        const refGroup = getEl('referenceNumberGroup'), refInput = getEl('referenceNumber');
+        const refGroup = getEl('referenceNumberGroup'), refInput = getEl('referenceNumber'), refLabel = getEl('referenceLabel');
         const calcChargeDisplay = getEl('calculatedCharge');
         const totalTx = getEl('totalTransactions'), totalPaid = getEl('totalChargesPaid');
         const tableBody = getEl('transactionsTableBody'), noTxMsg = getEl('noTransactionsMessage');
@@ -362,11 +362,30 @@
 
         // --- LISTENERS ---
         descSelect.addEventListener('change', () => {
-            const isOut = descSelect.value === "Cash Out";
-            refGroup.classList.toggle('hidden', !isOut);
-            if(!isOut) refInput.value = '';
+            const type = descSelect.value;
+            // Logic for Reference/Phone Number Input visibility
+            if (type === "Cash Out") {
+                refGroup.classList.remove('hidden');
+                refLabel.textContent = "Ref Number";
+                refInput.placeholder = "Last 4 digits...";
+                refInput.setAttribute('inputmode', 'numeric');
+            } else if (type === "Cash In") {
+                refGroup.classList.remove('hidden');
+                refLabel.textContent = "Ref Number"; // User option for Cash In
+                refInput.placeholder = "Last 4 digits (Optional)...";
+                refInput.setAttribute('inputmode', 'numeric');
+            } else if (type === "Load") {
+                refGroup.classList.remove('hidden');
+                refLabel.textContent = "Phone Number"; // Specific Label for Load
+                refInput.placeholder = "09xxxxxxxxx";
+                refInput.setAttribute('inputmode', 'tel'); // Phone keyboard
+            } else {
+                refGroup.classList.add('hidden');
+                refInput.value = '';
+            }
             updateChargeUI();
         });
+        
         amtInput.addEventListener('input', updateChargeUI);
         
         addForm.addEventListener('submit', (e) => {
@@ -374,17 +393,28 @@
             const amt = parseFloat(amtInput.value), date = dateInput.value, desc = descSelect.value;
             if (!desc || !date) return displayMsg(errorDisplay, errorMessage, "Missing Date/Type");
             if (isNaN(amt) || amt < 0 || (desc !== "Load" && amt <= 0)) return displayMsg(errorDisplay, errorMessage, "Invalid Amount");
+            
+            // Validation: Only enforce Ref Number for Cash Out (Strict)
+            // Cash In and Load refs/phones are optional to allow faster entry if needed
             if (desc === "Cash Out" && !refInput.value.trim()) return displayMsg(errorDisplay, errorMessage, "Ref No. Required");
 
             const now = new Date();
             const [y, m, d] = date.split('-').map(Number);
-            // Combine date input with current time for sorting
             const ts = new Date(y, m - 1, d, now.getHours(), now.getMinutes());
             
-            transactions.push({ id: Date.now().toString(), description: desc, amount: amt, charge: getCharge(amt, desc), timestamp: ts, referenceNumber: refInput.value.trim() || null });
+            transactions.push({ 
+                id: Date.now().toString(), 
+                description: desc, 
+                amount: amt, 
+                charge: getCharge(amt, desc), 
+                timestamp: ts, 
+                referenceNumber: refInput.value.trim() || null 
+            });
+            
             saveData(); render(); addForm.reset(); 
             dateInput.value = fmtDate(new Date());
-            descSelect.value = "Cash In"; descSelect.dispatchEvent(new Event('change'));
+            descSelect.value = "Cash In"; 
+            descSelect.dispatchEvent(new Event('change')); // Reset UI state
             displayMsg(successDisplay, successMessage, "Added!");
         });
 
@@ -416,7 +446,7 @@
         // Export & Reset
         exportBtn.addEventListener('click', () => {
             if(!window.XLSX || transactions.length===0) return;
-            const data = transactions.map(t => ({ "Date": t.timestamp.toLocaleString(), "Type": t.description, "Ref": t.referenceNumber||'', "Amount": t.amount, "Fee": t.charge }));
+            const data = transactions.map(t => ({ "Date": t.timestamp.toLocaleString(), "Type": t.description, "Ref/Phone": t.referenceNumber||'', "Amount": t.amount, "Fee": t.charge }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data");
             XLSX.writeFile(wb, `GCash_Data_${fmtDate(new Date())}.xlsx`);
@@ -431,7 +461,12 @@
         confirmDel.addEventListener('click', () => { transactions=transactions.filter(t=>t.id!==transactionToDeleteId); saveData(); render(); delModal.classList.add('hidden'); });
 
         // Init
-        document.addEventListener('DOMContentLoaded', () => { dateInput.value = fmtDate(new Date()); loadData(); updateChargeUI(); render(); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            dateInput.value = fmtDate(new Date()); 
+            loadData(); 
+            descSelect.dispatchEvent(new Event('change')); // Trigger initial state check
+            render(); 
+        });
     </script>
 </body>
 </html>
