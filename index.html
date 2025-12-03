@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GCash Tracker</title>
     
-    <link rel="manifest" href="manifest.json">
+    <!-- Manifest and Service Worker are commented out for the single-file preview environment -->
+    <!-- <link rel="manifest" href="manifest.json"> -->
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,6 +26,10 @@
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         input, select, textarea { font-size: 16px !important; }
+        
+        /* Animation utilities */
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4 relative pb-20">
@@ -147,14 +152,11 @@
                 <button id="closeSettingsButton" class="p-2 bg-gray-700 rounded-full text-gray-300"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-4 overflow-y-auto custom-scrollbar flex-1">
-                <div class="grid grid-cols-2 gap-3 mb-6">
+                <!-- Updated Grid to 1 column since we removed Bills Fee input -->
+                <div class="grid grid-cols-1 gap-3 mb-6">
                     <div>
                         <label class="block text-xs text-gray-400 uppercase mb-1">Load Fee</label>
                         <input type="number" inputmode="decimal" id="settingLoadFee" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 uppercase mb-1">Bills Fee</label>
-                        <input type="number" inputmode="decimal" id="settingBillsFee" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white">
                     </div>
                 </div>
                 
@@ -218,19 +220,11 @@
         </div>
     </div>
 
-    <script type="module">
-        // --- OFFLINE PWA REGISTRATION ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Offline Ready'))
-                    .catch(err => console.log('SW Fail', err));
-            });
-        }
-
+    <script>
         // --- CONSTANTS & STATE ---
         const DEFAULT_RATES = {
-            load: 5, bills: 0, threshold: 10000, baseFee: 135,
+            // Removed 'bills' rate, it now follows the main tiers
+            load: 5, threshold: 10000, baseFee: 135,
             tiers: [
                 { min: 1, max: 500, fee: 10 }, { min: 501, max: 1000, fee: 15 },
                 { min: 1001, max: 1500, fee: 20 }, { min: 1501, max: 2000, fee: 25 },
@@ -259,7 +253,7 @@
         const openSetBtn = getEl('openSettingsButton'), setModal = getEl('settingsModal');
         const closeSetBtn = getEl('closeSettingsButton'), saveSetBtn = getEl('saveSettings');
         const resetRatesBtn = getEl('resetDefaultRates'), addTierBtn = getEl('addTierRow');
-        const setLoad = getEl('settingLoadFee'), setBills = getEl('settingBillsFee');
+        const setLoad = getEl('settingLoadFee');
         const setThresh = getEl('settingThreshold'), setBase = getEl('settingBaseFee');
         const setTiersBody = getEl('settingsTiersBody');
         const delModal = getEl('deleteModal'), confirmDel = getEl('confirmDeleteButton'), cancelDel = getEl('cancelDeleteButton');
@@ -289,7 +283,8 @@
         const getCharge = (amt, type) => {
             if (amt <= 0) return 0;
             if (type === "Load") return currentRates.load;
-            if (type === "Bills") return currentRates.bills;
+            
+            // Bills now falls through to the tiered logic (Same as Cash In/Out)
             let charge = 0, rem = amt;
             if (currentRates.threshold > 0) {
                 while (rem > currentRates.threshold) { charge += currentRates.baseFee; rem -= currentRates.threshold; }
@@ -308,7 +303,7 @@
         };
 
         const render = () => {
-            // SORTING LOGIC: Newest timestamp first
+            // SORTING LOGIC: Newest timestamp first (Descending)
             transactions.sort((a,b) => b.timestamp - a.timestamp);
             
             tableBody.innerHTML = '';
@@ -435,14 +430,14 @@
 
         // Settings Listeners
         openSetBtn.addEventListener('click', () => {
-            setLoad.value = currentRates.load; setBills.value = currentRates.bills;
+            setLoad.value = currentRates.load;
             setThresh.value = currentRates.threshold; setBase.value = currentRates.baseFee;
             renderTiers(); setModal.classList.remove('hidden');
         });
         closeSetBtn.addEventListener('click', () => setModal.classList.add('hidden'));
         addTierBtn.addEventListener('click', () => { currentRates.tiers.push({min:0, max:0, fee:0}); renderTiers(); });
         saveSetBtn.addEventListener('click', () => {
-            currentRates.load = parseFloat(setLoad.value)||0; currentRates.bills = parseFloat(setBills.value)||0;
+            currentRates.load = parseFloat(setLoad.value)||0;
             currentRates.threshold = parseFloat(setThresh.value)||0; currentRates.baseFee = parseFloat(setBase.value)||0;
             const rows = setTiersBody.querySelectorAll('tr');
             const newTiers = [];
